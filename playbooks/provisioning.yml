@@ -1,0 +1,53 @@
+---
+- name: Pre Provisioning Baremetal Server
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    version: '202001'
+    name: 'build'
+    hostname: '{{ version }}.{{ name }}'
+    domain: 'maschin.run'
+  pre_tasks:
+    - name: Adds Baremetal Server to the inventory
+      add_host:
+        hostname: '{{ hostname }}'
+        groups: 'build'
+        ansible_user: root
+        ansible_host: '{{ hostname }}.{{ domain }}'
+
+    - name: Wait for the SSH connection
+      wait_for:
+        host: '{{ hostname }}.{{ domain }}'
+        port: 22
+        search_regex: 'OpenSSH'
+
+- name: Pre Provisioning Baremetal Server
+  hosts: build
+  gather_facts: true
+  collections:
+    - sbaerlocher.virtualization
+  pre_tasks:
+    - name: Installation required software
+      import_role:
+        name: itigoag.packages
+      vars:
+        packages:
+          unzip:
+            version: latest
+          python3-pip:
+            version: latest
+    - name: Download wondershaper
+      get_url:
+        url: 'https://raw.githubusercontent.com/magnific0/wondershaper/master/wondershaper'
+        dest: /usr/local/bin/wondershaper
+        mode: '0777'
+    - name: Run wondershaper
+      shell: /usr/local/bin/wondershaper -a enp1s0 -u 60000
+
+  roles:
+    - arillso.ansible
+    - packer
+    - virtualbox
+    - virtualbox_extension_pack
+    - vagrant

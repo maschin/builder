@@ -1,0 +1,208 @@
+name: Provisioning
+
+on:
+  schedule:
+    - cron: '0 0 1 * *'
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          path: builder
+
+      - name: Checkout template
+        uses: actions/checkout@v2
+        with:
+          repository: maschin/template.git
+          path: template
+
+      - name: Checkout collection
+        uses: actions/checkout@v2
+        with:
+          repository: maschin/collection.git
+          path: template/ansible
+
+      - name: Date
+        id: date
+        run: echo "::set-output name=date::$(date +%Y%m)"
+
+      - name: Play Ansible Playbook
+        uses: arillso/action.playbook@0.0.1
+        with:
+          playbook: builder/playbooks/create.yml
+          inventory: builder/hosts.yml
+          galaxy_file: builder/requirements.yml
+          module_path: template/ansible/modules
+          extra_vars: version=${{ steps.date.outputs.date }}
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: 'false'
+          ANSIBLE_DEPRECATION_WARNINGS: 'false'
+          VULTR_API_KEY: ${{ secrets.VULTR_API_KEY }}
+
+  provisioning:
+    runs-on: ubuntu-latest
+    needs:
+      - create
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          path: builder
+
+      - name: Checkout template
+        uses: actions/checkout@v2
+        with:
+          repository: maschin/template.git
+          path: template
+
+      - name: Checkout collection
+        uses: actions/checkout@v2
+        with:
+          repository: maschin/collection.git
+          path: template/ansible
+
+      - name: Date
+        id: date
+        run: echo "::set-output name=date::$(date +%Y%m)"
+
+      - name: Play Ansible Playbook
+        uses: arillso/action.playbook@0.0.1
+        with:
+          playbook: builder/playbooks/provisioning.yml
+          inventory: builder/hosts.yml
+          galaxy_file: builder/requirements.yml
+          module_path: template/ansible/modules
+          private_key: ${{ secrets.VULTR_SSH_KEY }}
+          extra_vars: version=${{ steps.date.outputs.date }}
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: 'false'
+          ANSIBLE_DEPRECATION_WARNINGS: 'false'
+
+      - name: Copy Project
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ steps.date.outputs.date }}.build.maschin.run
+          username: root
+          key: ${{ secrets.VULTR_SSH_KEY }}
+          command_timeout: 60m
+          timeout: 60m
+          source: 'template/*'
+          target: '.'
+          strip_components: 1
+
+      - name: Create Enterprise Maschine
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ steps.date.outputs.date }}.build.maschin.run
+          username: root
+          key: ${{ secrets.VULTR_SSH_KEY }}
+          command_timeout: 120m
+          timeout: 120m
+          script: packer build -debug -var 'version=${{ steps.date.outputs.date }}' -var 'cloud_token=${{ secrets.VAGRANT_CLOUD_TOKEN }}' -only=virtualbox-iso templates/10/Enterprise.json
+
+      - name: Create Pro Maschine
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ steps.date.outputs.date }}.build.maschin.run
+          username: root
+          key: ${{ secrets.VULTR_SSH_KEY }}
+          command_timeout: 120m
+          timeout: 120m
+          debug: true
+          script: packer build -var 'version=${{ steps.date.outputs.date }}' -var 'cloud_token=${{ secrets.VAGRANT_CLOUD_TOKEN }}' -only=virtualbox-iso templates/10/Pro.json
+
+  delete:
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - create
+      - provisioning
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          path: builder
+
+      - name: Checkout template
+        uses: actions/checkout@v2
+        with:
+          repository: maschin/template.git
+          path: template
+
+      - name: Checkout collection
+        uses: actions/checkout@v2
+        with:
+          repository: maschin/collection.git
+          path: template/ansible
+
+      - name: Date
+        id: date
+        run: echo "::set-output name=date::$(date +%Y%m)"
+
+      - name: Play Ansible Playbook
+        uses: arillso/action.playbook@0.0.1
+        with:
+          playbook: builder/playbooks/delete.yml
+          inventory: builder/hosts.yml
+          galaxy_file: builder/requirements.yml
+          module_path: template/ansible/modules
+          extra_vars: version=${{ steps.date.outputs.date }}
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: 'false'
+          ANSIBLE_DEPRECATION_WARNINGS: 'false'
+          VULTR_API_KEY: ${{ secrets.VULTR_API_KEY }}
+
+  release:
+    runs-on: ubuntu-latest
+    needs:
+      - create
+      - provisioning
+      - delete
+
+    steps:
+      - name: Date
+        id: date
+        run: echo "::set-output name=date::$(date +%Y%m)"
+
+      - name: Create Release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.date.outputs.date }}
+          release_name: Release ${{ steps.date.outputs.date }}
+          body: |
+            ## Changelog
+
+            ### Changed
+
+            - Latest Windows updates installed.
+
+            ## Vagrant Cloud
+
+            [Windows 10 Enterprise](https://app.vagrantup.com/maschin/boxes/Windows-10-Enterprise/versions/${{ steps.date.outputs.date }}) 
+            [Windows 10 Pro](https://app.vagrantup.com/maschin/boxes/Windows-10-Pro/versions/${{ steps.date.outputs.date }})
+          draft: false
+          prerelease: false
+
+  notify:
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - create
+      - provisioning
+      - delete
+
+    steps:
+      - uses: technote-space/workflow-conclusion-action@v1
+
+      - name: Mattermost Notification
+        uses: tferreira/matterfy@releases/v1
+        with:
+          type: ${{ env.WORKFLOW_CONCLUSION }}
+          job_name: '*Maschin*'
+          channel: 'monitoring'
+          url: https://mm.ndum.ch/hooks/${{ secrets.MATTERMOST_API_KEY }}
+        if: env.WORKFLOW_CONCLUSION == 'failure'

@@ -1,0 +1,53 @@
+---
+- name: Create Baremetal Server
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    version: '202001'
+    name: 'build'
+    hostname: '{{ version }}.{{ name }}'
+    domain: 'maschin.run'
+    ssh_key: 'MASCHIN'
+    server_os: 'Ubuntu 18.04 x64'
+  tasks:
+    - name: 'Gather Vultr Baremetal plans information'
+      local_action:
+        module: vultr_plan_baremetal_info
+      register: register_vultr_plan_baremetal
+
+    - name: 'Set Baremetal available locations'
+      set_fact:
+        available_locations: '{{ register_vultr_plan_baremetal | json_query(query_available_locations) | first }}'
+      vars:
+        query_available_locations: 'vultr_plan_baremetal_info[?id==`100`].available_locations'
+
+    - name: Gather Vultr regions information
+      local_action:
+        module: vultr_region_info
+      register: register_vultr_region
+
+    - name: 'Set Vultr Region list'
+      set_fact:
+        region: '{{ register_vultr_region | json_query(query_location_name) }}'
+      vars:
+        query_location_name: 'vultr_region_info[?id==`{{ available_locations[0] }}`].name'
+
+    - name: 'Create Vulrt Baremetal server'
+      local_action:
+        module: vultr_server_baremetal
+        name: '{{ hostname }}.{{ domain }}'
+        os: '{{ server_os }}'
+        plan: 32768 MB RAM,2x 240 GB SSD,5.00 TB BW
+        region: '{{ region | first }}'
+        ssh_keys: '{{ ssh_key }}'
+        hostname: packer
+      register: register_baremetal
+
+    - name: Create DNS record
+      local_action:
+        module: vultr_dns_record
+        name: '{{ hostname }}'
+        domain: '{{ domain }}'
+        data: '{{ register_baremetal.vultr_server_baremetal.v4_main_ip }}'
+        ttl: 0

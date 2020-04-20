@@ -1,0 +1,15 @@
+---
+# Roles and Collections for Action playbook
+# Date: 09.03.2020
+
+roles:
+  - name: itigoag.packages
+    src: itigoag.packages
+    version: 1.1.0
+  - name: arillso.ansible
+    src: arillso.ansible
+    version: 1.1.0
+
+collections:
+  - name: sbaerlocher.virtualization
+    version: 0.0.2

@@ -1,0 +1,23 @@
+---
+- name: Delete Baremetal Server
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    version: '202001'
+    name: 'build'
+    hostname: '{{ version }}.{{ name }}'
+    domain: 'maschin.run'
+  tasks:
+    - name: Ensure a server is absent
+      local_action:
+        module: vultr_server_baremetal
+        name: '{{ hostname }}.{{ domain }}'
+        state: absent
+
+    - name: Absent DNS record
+      local_action:
+        module: vultr_dns_record
+        name: '{{ hostname }}'
+        domain: '{{ domain }}'
+        state: absent
