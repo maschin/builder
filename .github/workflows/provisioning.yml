@@ -18,12 +18,14 @@ jobs:
         with:
           repository: maschin/template.git
           path: template
+          ref: master
 
       - name: Checkout collection
         uses: actions/checkout@v2
         with:
           repository: maschin/collection.git
           path: template/ansible
+          ref: master
 
       - name: Date
         id: date
@@ -56,12 +58,14 @@ jobs:
         with:
           repository: maschin/template.git
           path: template
+          ref: master
 
       - name: Checkout collection
         uses: actions/checkout@v2
         with:
           repository: maschin/collection.git
           path: template/ansible
+          ref: master
 
       - name: Date
         id: date
@@ -130,12 +134,14 @@ jobs:
         with:
           repository: maschin/template.git
           path: template
+          ref: master
 
       - name: Checkout collection
         uses: actions/checkout@v2
         with:
           repository: maschin/collection.git
           path: template/ansible
+          ref: master
 
       - name: Date
         id: date
