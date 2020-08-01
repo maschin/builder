@@ -1,6 +1,7 @@
 name: Provisioning
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: '0 0 1 * *'
 
@@ -32,7 +33,7 @@ jobs:
         run: echo "::set-output name=date::$(date +%Y%m)"
 
       - name: Play Ansible Playbook
-        uses: arillso/action.playbook@0.0.1
+        uses: arillso/action.playbook@0.0.3
         with:
           playbook: builder/playbooks/create.yml
           inventory: builder/hosts.yml
@@ -72,7 +73,7 @@ jobs:
         run: echo "::set-output name=date::$(date +%Y%m)"
 
       - name: Play Ansible Playbook
-        uses: arillso/action.playbook@0.0.1
+        uses: arillso/action.playbook@0.0.3
         with:
           playbook: builder/playbooks/provisioning.yml
           inventory: builder/hosts.yml
@@ -148,7 +149,7 @@ jobs:
         run: echo "::set-output name=date::$(date +%Y%m)"
 
       - name: Play Ansible Playbook
-        uses: arillso/action.playbook@0.0.1
+        uses: arillso/action.playbook@0.0.3
         with:
           playbook: builder/playbooks/delete.yml
           inventory: builder/hosts.yml
