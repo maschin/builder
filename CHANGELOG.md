@@ -5,6 +5,12 @@ and [human-readable changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## master
 
+## 0.0.4
+
+### Changed
+
+- Version of the Ansible collection sbaerlocher.virtualization upgrade from 0.0.3 to 0.0.4
+
 ## 0.0.3
 
 ### Added
