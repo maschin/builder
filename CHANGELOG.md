@@ -5,6 +5,12 @@ and [human-readable changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## master
 
+## 0.0.5
+
+- Removal of the virtualbox_extension_pack role because it is not needed during the build.
+
+### Removed
+
 ## 0.0.4
 
 ### Changed

@@ -49,5 +49,4 @@
     - arillso.ansible
     - packer
     - virtualbox
-    - virtualbox_extension_pack
     - vagrant
